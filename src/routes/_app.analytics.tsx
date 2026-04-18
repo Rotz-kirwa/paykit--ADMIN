@@ -62,7 +62,7 @@ function AnalyticsPage() {
                 <YAxis stroke="oklch(0.5 0.025 260)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: "1px solid oklch(0.92 0.01 260)", fontSize: 12 }}
-                  formatter={(v: number) => KES(v)}
+                  formatter={(v) => KES(Number(v))}
                 />
                 <Line type="monotone" dataKey="revenue" stroke="oklch(0.48 0.18 274)" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
               </LineChart>
@@ -79,7 +79,7 @@ function AnalyticsPage() {
                 <Pie data={methods} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}>
                   {methods.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v: number) => KES(v)} contentStyle={{ borderRadius: 12, border: "1px solid oklch(0.92 0.01 260)", fontSize: 12 }} />
+                <Tooltip formatter={(v) => KES(Number(v))} contentStyle={{ borderRadius: 12, border: "1px solid oklch(0.92 0.01 260)", fontSize: 12 }} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>

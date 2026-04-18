@@ -87,7 +87,7 @@ function DashboardPage() {
                 <YAxis stroke="oklch(0.5 0.025 260)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: "1px solid oklch(0.92 0.01 260)", fontSize: 12 }}
-                  formatter={(v: number) => KES(v)}
+                  formatter={(v) => KES(Number(v))}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="oklch(0.48 0.18 274)" strokeWidth={2.5} fill="url(#rev)" />
               </AreaChart>
@@ -108,7 +108,7 @@ function DashboardPage() {
                 <YAxis stroke="oklch(0.5 0.025 260)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: "1px solid oklch(0.92 0.01 260)", fontSize: 12 }}
-                  formatter={(v: number) => KES(v)}
+                  formatter={(v) => KES(Number(v))}
                 />
                 <Bar dataKey="revenue" fill="oklch(0.48 0.18 274)" radius={[6, 6, 0, 0]} />
               </BarChart>
