@@ -14,16 +14,97 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      mpesa_payments: {
+        Row: {
+          account_reference: string | null
+          amount: number
+          checkout_request_id: string | null
+          created_at: string
+          id: string
+          initiated_by: string | null
+          merchant_request_id: string | null
+          mpesa_receipt: string | null
+          phone: string
+          raw_callback: Json | null
+          result_code: number | null
+          result_desc: string | null
+          status: Database["public"]["Enums"]["mpesa_status"]
+          transaction_desc: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_reference?: string | null
+          amount: number
+          checkout_request_id?: string | null
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          phone: string
+          raw_callback?: Json | null
+          result_code?: number | null
+          result_desc?: string | null
+          status?: Database["public"]["Enums"]["mpesa_status"]
+          transaction_desc?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_reference?: string | null
+          amount?: number
+          checkout_request_id?: string | null
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          phone?: string
+          raw_callback?: Json | null
+          result_code?: number | null
+          result_desc?: string | null
+          status?: Database["public"]["Enums"]["mpesa_status"]
+          transaction_desc?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      mpesa_status: "Pending" | "Success" | "Failed" | "Cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +231,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      mpesa_status: ["Pending", "Success", "Failed", "Cancelled"],
+    },
   },
 } as const
