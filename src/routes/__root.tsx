@@ -1,5 +1,5 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, getCurrentUserFn } from "@/lib/auth";
 
 import appCss from "../styles.css?url";
 
@@ -26,23 +26,28 @@ function NotFoundComponent() {
 }
 
 export const Route = createRootRoute({
+  loader: () => getCurrentUserFn(),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Payment Pulse Dashboard" },
+      { name: "description", content: "M-Pesa payment analytics and management dashboard" },
+      { name: "author", content: "Paykit" },
+      { property: "og:title", content: "Payment Pulse Dashboard" },
+      { property: "og:description", content: "M-Pesa payment analytics and management dashboard" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        type: "image/jpeg",
+        href: "/favicon.jpg",
       },
     ],
   }),
@@ -53,11 +58,22 @@ export const Route = createRootRoute({
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
+    <html lang="en" suppressHydrationWarning>
+      <head suppressHydrationWarning>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if(!globalThis.crypto)globalThis.crypto={};" +
+              "if(!globalThis.crypto.randomUUID)globalThis.crypto.randomUUID=function(){" +
+              "if(!globalThis.crypto.getRandomValues){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){" +
+              "var r=Math.random()*16|0,v=c==='x'?r:(r&3|8);return v.toString(16)});}" +
+              "return([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,function(c){" +
+              "return(c^(globalThis.crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16)});};",
+          }}
+        />
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
@@ -66,8 +82,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const currentUser = Route.useLoaderData();
+
   return (
-    <AuthProvider>
+    <AuthProvider initialUser={currentUser}>
       <Outlet />
     </AuthProvider>
   );

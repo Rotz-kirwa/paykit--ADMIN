@@ -10,8 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as MpesaCallbackRouteImport } from './routes/mpesa.callback'
+import { Route as C2bValidationRouteImport } from './routes/c2b.validation'
+import { Route as C2bConfirmationRouteImport } from './routes/c2b.confirmation'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
 import { Route as AppCustomersRouteImport } from './routes/_app.customers'
@@ -22,6 +26,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CallbackRoute = CallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -30,6 +39,21 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const MpesaCallbackRoute = MpesaCallbackRouteImport.update({
+  id: '/mpesa/callback',
+  path: '/mpesa/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const C2bValidationRoute = C2bValidationRouteImport.update({
+  id: '/c2b/validation',
+  path: '/c2b/validation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const C2bConfirmationRoute = C2bConfirmationRouteImport.update({
+  id: '/c2b/confirmation',
+  path: '/c2b/confirmation',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
@@ -54,55 +78,89 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/callback': typeof CallbackRoute
   '/login': typeof LoginRoute
   '/analytics': typeof AppAnalyticsRoute
   '/customers': typeof AppCustomersRoute
   '/payments': typeof AppPaymentsRoute
   '/settings': typeof AppSettingsRoute
+  '/c2b/confirmation': typeof C2bConfirmationRoute
+  '/c2b/validation': typeof C2bValidationRoute
+  '/mpesa/callback': typeof MpesaCallbackRoute
 }
 export interface FileRoutesByTo {
+  '/callback': typeof CallbackRoute
   '/login': typeof LoginRoute
   '/analytics': typeof AppAnalyticsRoute
   '/customers': typeof AppCustomersRoute
   '/payments': typeof AppPaymentsRoute
   '/settings': typeof AppSettingsRoute
+  '/c2b/confirmation': typeof C2bConfirmationRoute
+  '/c2b/validation': typeof C2bValidationRoute
+  '/mpesa/callback': typeof MpesaCallbackRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/callback': typeof CallbackRoute
   '/login': typeof LoginRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/customers': typeof AppCustomersRoute
   '/_app/payments': typeof AppPaymentsRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/c2b/confirmation': typeof C2bConfirmationRoute
+  '/c2b/validation': typeof C2bValidationRoute
+  '/mpesa/callback': typeof MpesaCallbackRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/callback'
     | '/login'
     | '/analytics'
     | '/customers'
     | '/payments'
     | '/settings'
+    | '/c2b/confirmation'
+    | '/c2b/validation'
+    | '/mpesa/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/analytics' | '/customers' | '/payments' | '/settings' | '/'
+  to:
+    | '/callback'
+    | '/login'
+    | '/analytics'
+    | '/customers'
+    | '/payments'
+    | '/settings'
+    | '/c2b/confirmation'
+    | '/c2b/validation'
+    | '/mpesa/callback'
+    | '/'
   id:
     | '__root__'
     | '/_app'
+    | '/callback'
     | '/login'
     | '/_app/analytics'
     | '/_app/customers'
     | '/_app/payments'
     | '/_app/settings'
+    | '/c2b/confirmation'
+    | '/c2b/validation'
+    | '/mpesa/callback'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  CallbackRoute: typeof CallbackRoute
   LoginRoute: typeof LoginRoute
+  C2bConfirmationRoute: typeof C2bConfirmationRoute
+  C2bValidationRoute: typeof C2bValidationRoute
+  MpesaCallbackRoute: typeof MpesaCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -112,6 +170,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/callback': {
+      id: '/callback'
+      path: '/callback'
+      fullPath: '/callback'
+      preLoaderRoute: typeof CallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -127,6 +192,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/mpesa/callback': {
+      id: '/mpesa/callback'
+      path: '/mpesa/callback'
+      fullPath: '/mpesa/callback'
+      preLoaderRoute: typeof MpesaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c2b/validation': {
+      id: '/c2b/validation'
+      path: '/c2b/validation'
+      fullPath: '/c2b/validation'
+      preLoaderRoute: typeof C2bValidationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c2b/confirmation': {
+      id: '/c2b/confirmation'
+      path: '/c2b/confirmation'
+      fullPath: '/c2b/confirmation'
+      preLoaderRoute: typeof C2bConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/settings': {
       id: '/_app/settings'
@@ -179,8 +265,21 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  CallbackRoute: CallbackRoute,
   LoginRoute: LoginRoute,
+  C2bConfirmationRoute: C2bConfirmationRoute,
+  C2bValidationRoute: C2bValidationRoute,
+  MpesaCallbackRoute: MpesaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

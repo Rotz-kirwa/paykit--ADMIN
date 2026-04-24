@@ -1,37 +1,82 @@
-// Demo-only client-side auth. Replace with Lovable Cloud auth in v2.
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+export const loginFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => loginSchema.parse(input))
+  .handler(async (ctx) => {
+    const { email, password } = ctx.data as z.infer<typeof loginSchema>;
+    const { authenticateUser } = await import("./auth.server");
+    return authenticateUser(email, password);
+  });
+
+export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { getCurrentUser } = await import("./auth.server");
+  return getCurrentUser();
+});
+
+export const logoutFn = createServerFn({ method: "POST" }).handler(async () => {
+  const { logoutUser } = await import("./auth.server");
+  return logoutUser();
+});
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: string;
+}
 
 interface AuthCtx {
   isAuthenticated: boolean;
+  user: AuthUser | null;
   email: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
-const KEY = "demo_admin_session";
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [email, setEmail] = useState<string | null>(null);
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: ReactNode;
+  initialUser: AuthUser | null;
+}) {
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const v = window.localStorage.getItem(KEY);
-    if (v) setEmail(v);
-  }, []);
+    setUser(initialUser);
+  }, [initialUser]);
 
-  const login = async (em: string, _pw: string) => {
-    await new Promise((r) => setTimeout(r, 400));
-    window.localStorage.setItem(KEY, em);
-    setEmail(em);
+  const login = async (email: string, password: string) => {
+    const result = await loginFn({ data: { email, password } });
+    setUser(result.user);
   };
-  const logout = () => {
-    window.localStorage.removeItem(KEY);
-    setEmail(null);
+
+  const logout = async () => {
+    try {
+      await logoutFn();
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
-    <Ctx.Provider value={{ isAuthenticated: !!email, email, login, logout }}>
+    <Ctx.Provider
+      value={{
+        isAuthenticated: !!user,
+        user,
+        email: user?.email ?? null,
+        login,
+        logout,
+      }}
+    >
       {children}
     </Ctx.Provider>
   );
