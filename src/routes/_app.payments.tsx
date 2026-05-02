@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Search, Download, ArrowUpDown, Plus, Loader2, X } from "lucide-react";
+import { Search, Download, ArrowUpDown, Wallet, TrendingUp, CalendarDays, CalendarRange, Calendar } from "lucide-react";
 import { useLivePayments } from "@/hooks/use-live-payments";
 import { cn } from "@/lib/utils";
-import { fetchPaymentsFn, initiateStkPushFn, recheckPaymentStatusFn, type MpesaPayment } from "@/lib/payments";
+import { fetchPaymentsFn, recheckPaymentStatusFn, type MpesaPayment } from "@/lib/payments";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/payments")({
@@ -30,134 +30,46 @@ const STATUS_STYLES: Record<MpesaStatus, string> = {
 
 const PAGE_SIZE = 12;
 
-function StkPushDialog({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [phone, setPhone] = useState("");
-  const [amount, setAmount] = useState("");
-  const [reference, setReference] = useState("");
-  const [description, setDescription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+const CARD_GRADIENTS = {
+  primary: "var(--gradient-primary)",
+  blue: "var(--gradient-blue)",
+  coral: "var(--gradient-coral)",
+  green: "var(--gradient-green)",
+  orange: "var(--gradient-orange)",
+};
 
-  const submit = async (e: { preventDefault(): void }) => {
-    e.preventDefault();
-    setError("");
-    const amt = parseFloat(amount);
-    if (!phone.match(/^\+?0?[17]\d{8}$/) && !phone.match(/^254\d{9}$/)) {
-      setError("Enter a valid Kenyan phone number (e.g. 0712345678)");
-      return;
-    }
-    if (!amt || amt < 1) {
-      setError("Enter a valid amount (min KES 1)");
-      return;
-    }
-    if (!reference.trim()) {
-      setError("Account reference is required");
-      return;
-    }
-    setLoading(true);
-    try {
-      const result = await initiateStkPushFn({
-        data: {
-          phone,
-          amount: amt,
-          reference: reference.trim().slice(0, 12),
-          description: description.trim().slice(0, 13) || undefined,
-        },
-      });
-      setSuccessMsg(result.message ?? "STK Push sent. Ask the customer to check their phone.");
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to initiate payment");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function SummaryCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  gradient = "primary",
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  icon: React.ElementType;
+  gradient?: keyof typeof CARD_GRADIENTS;
+}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-lg)]">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Request M-Pesa Payment</h2>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 text-muted-foreground hover:bg-secondary"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        {successMsg ? (
-          <div className="space-y-4">
-            <div className="rounded-lg bg-success/10 p-4 text-sm text-success">{successMsg}</div>
-            <button
-              onClick={onClose}
-              style={{ background: "var(--gradient-primary)" }}
-              className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white"
-            >
-              Done
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={submit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Phone number</label>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="0712 345 678"
-                className="mt-1.5 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Amount (KES)</label>
-              <input
-                type="number"
-                min="1"
-                max="150000"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="1000"
-                className="mt-1.5 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">
-                Account reference <span className="text-muted-foreground">(max 12 chars)</span>
-              </label>
-              <input
-                value={reference}
-                onChange={(e) => setReference(e.target.value.slice(0, 12))}
-                placeholder="INV-001"
-                className="mt-1.5 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">
-                Description <span className="text-muted-foreground">(optional, max 13 chars)</span>
-              </label>
-              <input
-                value={description}
-                onChange={(e) => setDescription(e.target.value.slice(0, 13))}
-                placeholder="Payment"
-                className="mt-1.5 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ background: "var(--gradient-primary)" }}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium text-white disabled:opacity-60"
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Send STK Push
-            </button>
-          </form>
-        )}
+    <div
+      className="relative overflow-hidden rounded-2xl p-5 text-white shadow-[var(--shadow-card)] transition-all hover:-translate-y-0.5"
+      style={{ background: CARD_GRADIENTS[gradient] }}
+    >
+      <div className="pointer-events-none absolute -right-3 -top-3 h-20 w-20 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-white/10" />
+      <div className="relative flex items-center justify-between">
+        <p className="text-xs font-medium text-white/80">{label}</p>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
+          <Icon className="h-4 w-4 text-white" />
+        </span>
       </div>
+      <p className="relative mt-2 text-2xl font-bold tracking-tight text-white">{value}</p>
+      <p className="relative mt-0.5 text-xs text-white/70">{sub}</p>
     </div>
   );
 }
+
 function StatusBadge({ payment, onRefresh }: { payment: MpesaPayment; onRefresh: () => void }) {
   const [loading, setLoading] = useState(false);
 
@@ -203,26 +115,48 @@ function StatusBadge({ payment, onRefresh }: { payment: MpesaPayment; onRefresh:
 
 function PaymentsPage() {
   const loaderData = Route.useLoaderData();
-  const { payments, refresh } = useLivePayments(loaderData);
+  const { payments, refresh, isRefreshing, lastUpdated } = useLivePayments(loaderData);
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<"all" | MpesaStatus>("all");
-  const [sortDesc, setSortDesc] = useState(true);
+const [sortDesc, setSortDesc] = useState(true);
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
   const [page, setPage] = useState(1);
-  const [showDialog, setShowDialog] = useState(false);
 
-  const handleSuccess = async () => {
-    try {
-      await refresh();
-    } catch {
-      /* refresh on next load */
-    }
-  };
+  const stats = useMemo(() => {
+    const success = payments.filter((p) => p.status === "Success");
+    const sum = (list: MpesaPayment[]) =>
+      list.filter((p) => p.status === "Success").reduce((acc, p) => acc + Number(p.amount), 0);
+
+    const now = new Date();
+    const startOf = (unit: "day" | "week" | "month" | "year") => {
+      const d = new Date(now);
+      if (unit === "day") { d.setHours(0, 0, 0, 0); return d; }
+      if (unit === "week") { d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d; }
+      if (unit === "month") { return new Date(d.getFullYear(), d.getMonth(), 1); }
+      return new Date(d.getFullYear(), 0, 1);
+    };
+    const since = (start: Date) => payments.filter((p) => new Date(p.createdAt) >= start);
+
+    const yesterday = new Date(startOf("day"));
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayEnd = new Date(startOf("day").getTime() - 1);
+    const yesterdayPayments = payments.filter(
+      (p) => new Date(p.createdAt) >= yesterday && new Date(p.createdAt) <= yesterdayEnd,
+    );
+
+    return {
+      totalCollected: success.reduce((acc, p) => acc + Number(p.amount), 0),
+      totalCount: success.length,
+      today: sum(since(startOf("day"))),
+      yesterday: sum(yesterdayPayments),
+      thisWeek: sum(since(startOf("week"))),
+      thisMonth: sum(since(startOf("month"))),
+      thisYear: sum(since(startOf("year"))),
+    };
+  }, [payments]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     const list = payments.filter((p) => {
-      if (status !== "all" && p.status !== status) return false;
       if (!q) return true;
       return (
         p.phone.toLowerCase().includes(q) ||
@@ -273,36 +207,85 @@ function PaymentsPage() {
     }
   };
 
+  const updatedLabel = lastUpdated.toLocaleTimeString("en-KE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
   return (
     <div className="space-y-6">
-      {showDialog && (
-        <StkPushDialog onClose={() => setShowDialog(false)} onSuccess={handleSuccess} />
-      )}
-
+      {/* Header */}
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Payments</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {filtered.length} transactions · refreshes every 10s
-          </p>
+          <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+            <span
+              className={cn(
+                "inline-block h-2 w-2 rounded-full",
+                isRefreshing ? "bg-warning animate-pulse" : "bg-success animate-pulse",
+              )}
+            />
+            <span>Live · updated {updatedLabel}</span>
+            <span className="text-border">·</span>
+            <span>{payments.length} total transactions</span>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowDialog(true)}
-            style={{ background: "var(--gradient-primary)" }}
-            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-[var(--shadow-md)]"
-          >
-            <Plus className="h-4 w-4" /> Request Payment
-          </button>
-          <button
-            onClick={exportCsv}
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium shadow-[var(--shadow-sm)] hover:bg-secondary"
-          >
-            <Download className="h-4 w-4" /> Export CSV
-          </button>
-        </div>
+        <button
+          onClick={exportCsv}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium shadow-[var(--shadow-sm)] hover:bg-secondary"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </button>
       </header>
 
+      {/* Totals */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+        <SummaryCard
+          label="Total Collected"
+          value={KES(stats.totalCollected)}
+          sub={`${stats.totalCount} payment${stats.totalCount !== 1 ? "s" : ""} · all time`}
+          icon={Wallet}
+          gradient="primary"
+        />
+        <SummaryCard
+          label="Today"
+          value={KES(stats.today)}
+          sub="Since midnight"
+          icon={TrendingUp}
+          gradient="blue"
+        />
+        <SummaryCard
+          label="Yesterday"
+          value={KES(stats.yesterday)}
+          sub="Previous day"
+          icon={CalendarDays}
+          gradient="coral"
+        />
+        <SummaryCard
+          label="This Week"
+          value={KES(stats.thisWeek)}
+          sub="Sun – today"
+          icon={CalendarRange}
+          gradient="orange"
+        />
+        <SummaryCard
+          label="This Month"
+          value={KES(stats.thisMonth)}
+          sub="Month to date"
+          icon={Calendar}
+          gradient="green"
+        />
+        <SummaryCard
+          label="This Year"
+          value={KES(stats.thisYear)}
+          sub="Year to date"
+          icon={Calendar}
+          gradient="primary"
+        />
+      </div>
+
+      {/* Table */}
       <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-sm)]">
         <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
           <div className="relative min-w-[240px] flex-1">
@@ -316,25 +299,6 @@ function PaymentsPage() {
               placeholder="Search phone, receipt or reference…"
               className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm outline-none focus:border-primary"
             />
-          </div>
-          <div className="flex gap-1 rounded-lg border border-border bg-secondary/50 p-1">
-            {(["all", "Success", "Pending", "Failed", "Cancelled"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => {
-                  setStatus(s);
-                  setPage(1);
-                }}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                  status === s
-                    ? "bg-card shadow-[var(--shadow-sm)]"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {s === "all" ? "All" : s}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -388,7 +352,7 @@ function PaymentsPage() {
                 <tr>
                   <td colSpan={6} className="px-6 py-16 text-center text-sm text-muted-foreground">
                     {payments.length === 0
-                      ? 'No payments yet. Click "Request Payment" to initiate your first STK Push.'
+                      ? "No payments yet. Payments made directly to the till number will appear here automatically."
                       : "No payments match your search."}
                   </td>
                 </tr>
@@ -399,7 +363,7 @@ function PaymentsPage() {
 
         <div className="flex items-center justify-between border-t border-border px-6 py-3">
           <p className="text-xs text-muted-foreground">
-            Page {safePage} of {totalPages}
+            Page {safePage} of {totalPages} · {filtered.length} result{filtered.length !== 1 ? "s" : ""}
           </p>
           <div className="flex gap-1">
             <button

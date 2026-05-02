@@ -1,25 +1,37 @@
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { fetchPaymentsFn, type MpesaPayment } from "@/lib/payments";
 
 export function useLivePayments(initialPayments: MpesaPayment[], intervalMs = 10000) {
   const [payments, setPayments] = useState(initialPayments);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const pendingRef = useRef(false);
 
   useEffect(() => {
     setPayments(initialPayments);
   }, [initialPayments]);
 
   const refresh = async () => {
-    const fresh = await fetchPaymentsFn();
-    startTransition(() => {
-      setPayments(fresh);
-    });
-    return fresh;
+    if (pendingRef.current) return payments;
+    pendingRef.current = true;
+    setIsRefreshing(true);
+    try {
+      const fresh = await fetchPaymentsFn();
+      startTransition(() => {
+        setPayments(fresh);
+        setLastUpdated(new Date());
+      });
+      return fresh;
+    } finally {
+      pendingRef.current = false;
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       void refresh().catch(() => {
-        // Keep the current snapshot if a background refresh fails.
+        // Keep current snapshot if background refresh fails.
       });
     }, intervalMs);
 
@@ -28,5 +40,5 @@ export function useLivePayments(initialPayments: MpesaPayment[], intervalMs = 10
     };
   }, [intervalMs]);
 
-  return { payments, refresh };
+  return { payments, refresh, isRefreshing, lastUpdated };
 }

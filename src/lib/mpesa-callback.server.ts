@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { mpesaPayments } from "./db/schema";
+import { processPaymentSms } from "./sms-automation.server";
 
 type CallbackResult = { ResultCode: number; ResultDesc: string };
 type MpesaStatus = "Pending" | "Success" | "Failed" | "Cancelled";
@@ -159,7 +160,7 @@ export async function handleC2bConfirmation(body: unknown): Promise<CallbackResu
   const tillNumber = parseString(body.BusinessShortCode) ?? process.env.MPESA_TILL_NUMBER ?? null;
   const businessShortcode = process.env.MPESA_SHORTCODE ?? null;
 
-  await db
+  const [inserted] = await db
     .insert(mpesaPayments)
     .values({
       source: "c2b_till",
@@ -177,7 +178,21 @@ export async function handleC2bConfirmation(body: unknown): Promise<CallbackResu
       createdAt: paidAt,
       updatedAt: now,
     })
-    .onConflictDoNothing({ target: mpesaPayments.mpesaReceiptNumber });
+    .onConflictDoNothing({ target: mpesaPayments.mpesaReceiptNumber })
+    .returning({ id: mpesaPayments.id });
+
+  // Trigger SMS automation — errors must never fail the payment
+  if (inserted?.id && amount != null) {
+    processPaymentSms({
+      paymentId: inserted.id,
+      phone,
+      amount,
+      transactionCode: mpesaReceiptNumber,
+      paidAt,
+    }).catch((err) => {
+      console.error("[sms-automation] Background SMS trigger failed:", err);
+    });
+  }
 
   return accepted();
 }

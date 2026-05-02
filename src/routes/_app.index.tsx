@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import {
   Wallet,
   TrendingUp,
-  CalendarDays,
   CalendarRange,
   Calendar,
   Users as UsersIcon,
+  ArrowRight,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -16,12 +16,14 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  BarChart,
-  Bar,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { useLivePayments } from "@/hooks/use-live-payments";
 import { fetchPaymentsFn, type MpesaPayment } from "@/lib/payments";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/")({
   loader: () => fetchPaymentsFn(),
@@ -29,7 +31,7 @@ export const Route = createFileRoute("/_app/")({
   head: () => ({
     meta: [
       { title: "Dashboard — Paykit Admin" },
-      { name: "description", content: "Track payments, revenue and customers in real time." },
+      { name: "description", content: "Track M-Pesa till payments in real time." },
     ],
   }),
 });
@@ -82,7 +84,6 @@ function computeStats(payments: MpesaPayment[]) {
     totalRevenue: sumSuccess(payments),
     todayRevenue: sumSuccess(todayP),
     todayChange: pct(sumSuccess(todayP), sumSuccess(yesterdayP)),
-    yesterdayRevenue: sumSuccess(yesterdayP),
     monthRevenue: sumSuccess(monthP),
     monthChange: pct(sumSuccess(monthP), sumSuccess(lastMonthP)),
     yearRevenue: sumSuccess(yearP),
@@ -103,21 +104,16 @@ function dailySeries(payments: MpesaPayment[], days: number) {
   });
 }
 
-function monthlySeries(payments: MpesaPayment[]) {
-  const now = new Date();
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
-    const next = new Date(now.getFullYear(), now.getMonth() - (11 - i) + 1, 1);
-    return {
-      month: d.toLocaleDateString("en-KE", { month: "short" }),
-      revenue: sumSuccess(payments.filter((p) => p.createdAt >= d && p.createdAt < next)),
-    };
-  });
-}
+const STATUS_COLORS = {
+  Success: "#7C3AED",
+  Pending: "#F59E0B",
+  Failed: "#EF4444",
+  Cancelled: "#9CA3AF",
+};
 
 function DashboardPage() {
   const initialPayments = Route.useLoaderData();
-  const { payments } = useLivePayments(initialPayments);
+  const { payments, lastUpdated } = useLivePayments(initialPayments);
   const [chartsReady, setChartsReady] = useState(false);
 
   useEffect(() => {
@@ -126,98 +122,108 @@ function DashboardPage() {
 
   const stats = computeStats(payments);
   const daily = dailySeries(payments, 30);
-  const monthly = monthlySeries(payments);
   const recent = [...payments]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 6);
+    .slice(0, 8);
+
+  const statusCounts = ["Success", "Pending", "Failed", "Cancelled"].map((s) => ({
+    name: s,
+    value: payments.filter((p) => p.status === s).length,
+  }));
+  const totalTxns = payments.length || 1;
+  const successPct = Math.round((statusCounts[0].value / totalTxns) * 100);
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-7">
+      {/* Header */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Overview</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Welcome back. Here's what's happening with your business today.
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Welcome back — live data updated at{" "}
+            {lastUpdated.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
-        <span className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-          Live data · refreshes every 10s
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+            Live · refreshes every 10s
+          </span>
+        </div>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Gradient stat cards */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Total Revenue"
           value={KES(stats.totalRevenue)}
+          sub="All-time till collections"
           icon={Wallet}
-          accent="primary"
+          gradient="primary"
         />
         <StatCard
-          label="Today"
+          label="Today's Revenue"
           value={KES(stats.todayRevenue)}
+          sub="Since midnight"
           change={stats.todayChange}
           icon={TrendingUp}
-          accent="success"
-        />
-        <StatCard
-          label="Yesterday"
-          value={KES(stats.yesterdayRevenue)}
-          icon={CalendarDays}
-          accent="muted"
+          gradient="blue"
         />
         <StatCard
           label="This Month"
           value={KES(stats.monthRevenue)}
+          sub="Month to date"
           change={stats.monthChange}
           icon={CalendarRange}
-          accent="primary"
+          gradient="coral"
         />
         <StatCard
           label="This Year"
           value={KES(stats.yearRevenue)}
+          sub={`${stats.totalCustomers} unique payees`}
           icon={Calendar}
-          accent="warning"
-        />
-        <StatCard
-          label="Customers"
-          value={stats.totalCustomers.toLocaleString()}
-          icon={UsersIcon}
-          accent="success"
+          gradient="green"
         />
       </section>
 
+      {/* Charts row */}
       <section className="grid gap-6 lg:grid-cols-3">
+        {/* Area chart */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-sm)] lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-semibold">Revenue trend</h2>
-              <p className="text-xs text-muted-foreground">Last 30 days</p>
+              <p className="text-xs text-muted-foreground">Last 30 days · successful payments only</p>
             </div>
-            <span className="text-sm font-medium text-success">
+            <span
+              className="rounded-xl px-3 py-1 text-sm font-semibold text-white shadow-sm"
+              style={{ background: "var(--gradient-primary)" }}
+            >
               {KES(daily.reduce((a, b) => a + b.revenue, 0))}
             </span>
           </div>
-          <div className="h-72">
+          <div className="h-64">
             {chartsReady ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={daily} margin={{ left: -12, right: 8, top: 8, bottom: 0 }}>
+                <AreaChart data={daily} margin={{ left: -16, right: 4, top: 4, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="oklch(0.62 0.19 280)" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="oklch(0.62 0.19 280)" stopOpacity={0} />
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="oklch(0.92 0.01 260)" vertical={false} />
+                  <CartesianGrid stroke="oklch(0.91 0.012 265)" vertical={false} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="label"
-                    stroke="oklch(0.5 0.025 260)"
-                    fontSize={11}
+                    stroke="oklch(0.52 0.025 260)"
+                    fontSize={10}
                     tickLine={false}
                     axisLine={false}
+                    interval={4}
                   />
                   <YAxis
-                    stroke="oklch(0.5 0.025 260)"
-                    fontSize={11}
+                    stroke="oklch(0.52 0.025 260)"
+                    fontSize={10}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
@@ -225,110 +231,158 @@ function DashboardPage() {
                   <Tooltip
                     contentStyle={{
                       borderRadius: 12,
-                      border: "1px solid oklch(0.92 0.01 260)",
+                      border: "1px solid oklch(0.91 0.012 265)",
                       fontSize: 12,
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
                     }}
-                    formatter={(v) => KES(Number(v))}
+                    formatter={(v) => [KES(Number(v)), "Revenue"]}
                   />
                   <Area
                     type="monotone"
                     dataKey="revenue"
-                    stroke="oklch(0.48 0.18 274)"
+                    stroke="#7C3AED"
                     strokeWidth={2.5}
-                    fill="url(#rev)"
+                    fill="url(#revGrad)"
+                    dot={false}
+                    activeDot={{ r: 5, fill: "#7C3AED", strokeWidth: 2, stroke: "#fff" }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Loading chart...
+                Loading chart…
               </div>
             )}
           </div>
         </div>
 
+        {/* Donut chart */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-sm)]">
-          <div className="mb-4">
-            <h2 className="text-base font-semibold">Monthly revenue</h2>
-            <p className="text-xs text-muted-foreground">Last 12 months</p>
+          <div className="mb-5">
+            <h2 className="text-base font-semibold">Transaction Status</h2>
+            <p className="text-xs text-muted-foreground">All time breakdown</p>
           </div>
-          <div className="h-72">
+          <div className="relative h-52">
             {chartsReady ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthly} margin={{ left: -16, right: 4, top: 8, bottom: 0 }}>
-                  <CartesianGrid stroke="oklch(0.92 0.01 260)" vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    stroke="oklch(0.5 0.025 260)"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="oklch(0.5 0.025 260)"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: 12,
-                      border: "1px solid oklch(0.92 0.01 260)",
-                      fontSize: 12,
-                    }}
-                    formatter={(v) => KES(Number(v))}
-                  />
-                  <Bar dataKey="revenue" fill="oklch(0.48 0.18 274)" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusCounts}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={84}
+                      paddingAngle={3}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {statusCounts.map((entry) => (
+                        <Cell
+                          key={entry.name}
+                          fill={STATUS_COLORS[entry.name as keyof typeof STATUS_COLORS]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ borderRadius: 10, fontSize: 12, border: "1px solid oklch(0.91 0.012 265)" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Centre label */}
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-bold">{successPct}%</span>
+                  <span className="text-xs text-muted-foreground">Success rate</span>
+                </div>
+              </>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Loading chart...
+                Loading chart…
               </div>
             )}
+          </div>
+          {/* Legend */}
+          <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2">
+            {statusCounts.map((s) => (
+              <div key={s.name} className="flex items-center gap-1.5 text-xs">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: STATUS_COLORS[s.name as keyof typeof STATUS_COLORS] }}
+                />
+                <span className="text-muted-foreground">{s.name}</span>
+                <span className="ml-auto font-semibold">{s.value}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
+      {/* Recent payments */}
       <section className="rounded-2xl border border-border bg-card shadow-[var(--shadow-sm)]">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-base font-semibold">Recent payments</h2>
-          <a href="/payments" className="text-sm font-medium text-primary hover:underline">
-            View all →
+          <div>
+            <h2 className="text-base font-semibold">Recent Payments</h2>
+            <p className="text-xs text-muted-foreground">Latest till transactions</p>
+          </div>
+          <a
+            href="/payments"
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            View all <ArrowRight className="h-3 w-3" />
           </a>
         </div>
+
         {recent.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No payments yet. Go to Payments and request your first STK Push.
+          <div className="px-6 py-14 text-center text-sm text-muted-foreground">
+            No payments yet. Payments made directly to the till number will appear here automatically.
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {recent.map((p) => (
-              <div key={p.id} className="flex items-center gap-4 px-6 py-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-semibold">
-                  {p.phone.slice(-2)}
+            {recent.map((p) => {
+              const statusStyle: Record<string, string> = {
+                Success: "bg-success/10 text-success",
+                Pending: "bg-warning/10 text-warning",
+                Failed: "bg-destructive/10 text-destructive",
+                Cancelled: "bg-muted text-muted-foreground",
+              };
+              return (
+                <div key={p.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-secondary/30 transition-colors">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+                    style={{ background: "var(--gradient-primary)" }}
+                  >
+                    {p.phone.slice(-2)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{p.phone}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {p.accountReference ?? "—"}
+                      {p.mpesaReceiptNumber ? ` · ${p.mpesaReceiptNumber}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                      statusStyle[p.status],
+                    )}
+                  >
+                    {p.status}
+                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-bold">{KES(Number(p.amount))}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {p.createdAt.toLocaleDateString("en-KE", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{p.phone}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {p.accountReference ?? "—"} ·{" "}
-                    {p.mpesaReceiptNumber ?? p.checkoutRequestId?.slice(0, 16) ?? "Pending"}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold">{KES(Number(p.amount))}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.createdAt.toLocaleDateString("en-KE", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

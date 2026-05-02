@@ -90,7 +90,6 @@ export async function reconcilePendingStkPayments(limit = 20) {
 export async function fetchPayments() {
   const user = await getCurrentUser();
   if (!user) return [];
-  await reconcilePendingStkPayments();
 
   return db
     .select({
